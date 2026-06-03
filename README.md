@@ -2,7 +2,7 @@
 
 # Koskript
 
-Koskript is a simple, embeddable, and lightweight scripting language designed to be used as a DSL inside Python applications. It features static typing, lexical scoping, and native Python interop — letting you expose any Python function or object directly to your scripts.
+Koskript is a simple, embeddable, and lightweight scripting language designed to be used as a DSL inside Python applications. It features dynamic typing, lexical scoping, and native Python interop — letting you expose any Python function or object directly to your scripts.
 
 > **NOTE:** Koskript is currently in early development. Features like module imports, more types, and performance improvements are on the way.
 
