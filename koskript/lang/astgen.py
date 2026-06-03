@@ -10,11 +10,13 @@ class KoskriptTransformer(Transformer):
     def bool_true(self, tree): return BoolLit(value=True)
     def bool_false(self, tree): return BoolLit(value=False)
 
-    def inttype(self, tree): return ValueType.INTEGER
-    def strtype(self, tree): return ValueType.STRING
-    def booltype(self, tree): return ValueType.BOOL
-    def arraytype(self, tree): return ValueType.ARRAY
-    def maptype(self, tree): return ValueType.MAP
+    def lambda_fn(self, tree):
+        body = tree
+        return LambdaFnDef(params=[], body=body)
+
+    def lambda_fn_args(self, tree):
+        params, body = tree
+        return LambdaFnDef(params=params, body=body)
 
     def array(self, tree): return ArrayLit(value=tree)
     def map(self, tree): return MapLit(value=tree)
@@ -39,13 +41,7 @@ class KoskriptTransformer(Transformer):
         return DivStmt(left=left, right=right)
 
     def param_list(self, tree):
-        res = []
-        for i in tree:
-            res.append(Param(t=i[0], name=i[1]))
-        return res
-    
-    def param(self, tree):
-        return [tree[0], tree[1]]
+        return [obj.name for obj in tree]
     
     def block(self, tree):
         return tree
@@ -114,10 +110,9 @@ class KoskriptTransformer(Transformer):
 
     # declarations
     def local_decl(self, tree):
-        t, name, expr = tree
+        name, expr = tree
 
         return LocalDecl(
-            t=t,
             name=name.name, 
             value=expr
         )
@@ -129,18 +124,16 @@ class KoskriptTransformer(Transformer):
         )
 
     def fn_def(self, tree):
-        t, name, params, block = tree
+        name, params, block = tree
         return FnDef(
-            t=t,
             name=name.name,
             params=params,
             body=block
         )
     
     def fn_def_nargs(self, tree):
-        t, name, block = tree
+        name, block = tree
         return FnDef(
-            t=t,
             name=name.name,
             params=[],
             body=block
@@ -157,12 +150,12 @@ class KoskriptTransformer(Transformer):
         return WhileStmt(condition=condition, body=block)
     
     def for_stmt(self, tree):
-        vartype, varname, iterable, block = tree
-        return ForStmt(t=vartype, var=varname.name, iterable=iterable.name, body=block)
+        varname, iterable, block = tree
+        return ForStmt(var=varname.name, iterable=iterable.name, body=block)
     
     def foritem_stmt(self, tree):
-        keytype, key, valuetype, value, iterable, block = tree
-        return ForItemStmt(kt=keytype, key=key.name, vt=valuetype, var=value.name, iterable=iterable.name, body=block)
+        key, value, iterable, block = tree
+        return ForItemStmt(key=key.name, var=value.name, iterable=iterable.name, body=block)
     
     # Otros
     def fn_call(self, tree):

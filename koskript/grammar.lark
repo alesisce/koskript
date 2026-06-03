@@ -8,18 +8,14 @@ array: "[" expr ("," expr)* "]"
 bool: "true" -> bool_true
     | "false" -> bool_false
 
+lambda_fn: "(" ")" block
+         | "(" param_list ")" block -> lambda_fn_args
 
 map_obj: expr ":" expr
 map: "{" map_obj ("," map_obj)* "}"
 
 // ── Entry point ────────────────────────────────────────────
 ?start        : statement*
-
-declare_types: "int" -> inttype
-            | "string" -> strtype
-            | "bool" -> booltype
-            | "array" -> arraytype
-            | "map" -> maptype
 
 // ── Statements ─────────────────────────────────────────────
 ?statement    : local_decl
@@ -33,15 +29,15 @@ declare_types: "int" -> inttype
             | if_stmt
 
 // ── Variable declaration ───────────────────────────────────
-local_decl   : "local" declare_types NAME "=" expr
+local_decl   : "local" NAME "=" expr
 decl: NAME "=" expr
 
 // ── Function definition ────────────────────────────────────
-fn_def       : declare_types "fn" NAME "(" param_list ")" block
-            | declare_types "fn" NAME "(" ")" block -> fn_def_nargs
+fn_def       : "fn" NAME "(" param_list ")" block
+            | "fn" NAME "(" ")" block -> fn_def_nargs
 
-param_list : param ("," param)*
-param      : declare_types NAME
+param_list : NAME ("," NAME)*
+
 
 
 // ── Return ─────────────────────────────────────────────────
@@ -51,8 +47,8 @@ return_stmt  : "return" expr?
 while_stmt   : "while" "(" condition ")" block
 
 // ── For loops ──────────────────────────────────────────────
-for_stmt     : "for" "(" declare_types NAME "in" expr ")" block
-foritem_stmt : "foreach" "(" declare_types NAME "," declare_types NAME "in" expr ")" block
+for_stmt     : "for" "(" NAME "in" expr ")" block
+foritem_stmt : "foreach" "(" NAME "," NAME "in" expr ")" block
 
 // ── If ─────────────────────────────────────────────────────
 
@@ -65,7 +61,7 @@ block        : "{" statement* "}"
 
 // ── Expressions ────────────────────────────────────────────
 ?expr_stmt    : expr
-?expr         : fn_call | NUMBER | STRING | array | map | member_access | bool
+?expr         : fn_call | NUMBER | STRING | array | map | member_access | bool | lambda_fn
             | expr "+" expr -> add_stmt
             | expr "-" expr -> sub_stmt
             | expr "*" expr -> mul_stmt
