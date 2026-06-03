@@ -3,10 +3,6 @@ class Errors:
         def __init__(self, *args):
             super().__init__(*args)
     
-    class ProtectedValue(Exception):
-        def __init__(self, *args):
-            super().__init__(*args)
-
-    class RuntimeError(Exception):
+    class ProtectedObject(Exception):
         def __init__(self, *args):
             super().__init__(*args)

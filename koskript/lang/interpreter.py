@@ -17,20 +17,13 @@ class KoskripInterpreter(object):
             ElseIfStmt: self._else_if_stmt,
             ElseStmt: self._else_stmt
         }
-        self.types = {
-            ValueType.INTEGER: int,
-            ValueType.STRING: str,
-            ValueType.BOOL: bool,
-            ValueType.ARRAY: list, 
-            ValueType.MAP: dict
-        }
     
     def execute(self, ast: list):
         for node in ast:
             value = self.visit(node)
             if value: return value
 
-    def get_global(self, name: str) -> KoskriptValue | KoskriptObject:
+    def get_global(self, name: str) -> KoskriptObject:
         for scope in reversed(self.scopes):
             if scope in self.globals and name in self.globals[scope]:
                 return self.globals[scope][name]
@@ -40,7 +33,7 @@ class KoskripInterpreter(object):
         
         raise NameError(f"'{name}' is not defined")
 
-    def set_global(self, name: str, value: KoskriptValue | KoskriptObject) -> None:
+    def set_global(self, name: str, value: KoskriptObject) -> None:
         if self.scopes:
             scope = self.scopes[-1]
             if scope not in self.globals:
@@ -80,7 +73,7 @@ class KoskripInterpreter(object):
             case MemberAccess(name, attrs):
                 value = self.expr_eval(name)
 
-                if not isinstance(value, self.types.get(ValueType.MAP)):
+                if not isinstance(value, dict):
                     raise Errors.MismatchType(f"member access only supported on map, got {value}")
                 
                 for attr in attrs:
@@ -92,37 +85,44 @@ class KoskripInterpreter(object):
                 return value
                 
             case FnCall(n, arg): return self.fn_eval(n, arg)
+            case LambdaFnDef(p, body): return Function(params=p, body=body[0])
             case _: raise RuntimeError(f"Unknown expr: {type(expr).__name__}")
 
     def fn_eval(self, name, args):
         if type(name) != MemberAccess:
-            func: KoskriptObject = self.get_global(name)
+            func: KoskriptObject = self.get_global(name.name)
         else:
             func: KoskriptObject = self.expr_eval(name)
 
         if not func:
             raise NameError(f"no define with the name {name} exists.")
         
-        func_type: ObjectType = func.type
-        func_return: ValueType = func.returntype
-        func_params: list[Param] = func.params
-        func_body = func.value
+        if callable(func.value):
+            return func.value(*[self.expr_eval(arg) for arg in args])
 
-        if func_type == ObjectType.PYFN:
-            return func_body(*[self.expr_eval(arg) for arg in args])
+        if type(func.value) != Function:
+            raise ValueError(f"{name} is not callable.")
+        
+        func_params = func.value.params
+        func_body = func.value.body
 
-        self.scopes.append(f"{name}_func")
-        for numparam, param in enumerate(func_params):
-            value = KoskriptValue(param.t)
-            value.set_value(self.expr_eval(args[numparam]))
-            value.readonly = True
-
-            self.set_global(param.name.name, value)
-
-        status = self.execute(func_body)
+        self.scopes.append(f"func_{name}")
+        for index_param, param in enumerate(func_params):
+            try:
+                self.set_global(
+                    name=param, 
+                    value=KoskriptObject(
+                        self.expr_eval(args[index_param]), 
+                        read_only=True)
+                )
+            except IndexError:
+                break
+        
+        value = self.execute(func_body)
         self.scopes.pop()
-        return status
-    
+        return value
+
+
     def cond_eval(self, condition):
         match condition:
             case EquComp(l, r): return self.expr_eval(l) == self.expr_eval(r)
@@ -142,17 +142,12 @@ class KoskripInterpreter(object):
     
     def _local_decl(self, node: LocalDecl):
         value = self.expr_eval(node.value)
-        decltype = node.t
         name = node.name
-
-        if not isinstance(value, self.types.get(decltype)):
-            raise ValueError(f"expected type '{decltype}' on variable {name}")
 
         self.set_global(
             name,
-            KoskriptValue(
-                decltype,
-                value
+            KoskriptObject(
+                value=value
             )
         )
 
@@ -169,14 +164,14 @@ class KoskripInterpreter(object):
         self.set_global(
             name=node.name,
             value=KoskriptObject(
-                returntype=node.t,
-                type=ObjectType.FN,
+                value=Function(
                 params=node.params,
-                value=node.body
-            )
+                body=node.body
+            ))
         )
 
     def _fn_call(self, node: FnCall):
+        #print(node)
         return self.fn_eval(node.name, args=node.args)
 
     def _return_stmt(self, node: ReturnStmt):
@@ -192,22 +187,21 @@ class KoskripInterpreter(object):
         if not array_variable:
             raise NameError(f"{array_variable} is not declared.")
         
-        if not array_variable.type == ValueType.ARRAY:
-            raise ValueError(f"{array_variable} is not an array.")
+        if type(array_variable.value) != list and type(array_variable.value) != dict:
+            raise NameError(f"for statement only supports maps or arrays.")
 
         self.scopes.append(f"for_{node.iterable}")
-        var = KoskriptValue(node.t)
-        var.readonly = True
+        var = KoskriptObject(None)
+        var.read_only = True
         self.set_global(node.var, var)
 
 
         array_value = iter(array_variable.value)
+        variable = self.get_global(node.var)
         while True:
             try:
                 value = next(array_value)
-
-                variable = self.get_global(node.var)
-                variable.set_value(value=value, force=True)
+                variable.value = value
 
                 self.execute(node.body)
             except StopIteration:
@@ -221,29 +215,28 @@ class KoskripInterpreter(object):
         if not map_variable:
             raise NameError(f"{map_variable} is not declared.")
         
-        if not map_variable.type == ValueType.MAP:
+        if type(map_variable.value) != dict:
             raise ValueError(f"{map_variable} is not a map.")
 
         self.scopes.append(f"foreach_{node.iterable}")
-        keyvalue = KoskriptValue(node.kt)
-        varvalue = KoskriptValue(node.vt)
+        keyvalue = KoskriptObject(None)
+        varvalue = KoskriptObject(None)
 
-        keyvalue.readonly = True
-        varvalue.readonly = True
+        keyvalue.read_only = True
+        varvalue.read_only = True
 
         self.set_global(node.key, keyvalue)
         self.set_global(node.var, varvalue)
 
         map_variable_value = iter(map_variable.value.items())
-
+        kval = self.get_global(node.key)
+        vval = self.get_global(node.var)
         while True:
             try:
                 value = next(map_variable_value)
-                kval = self.get_global(node.key)
-                vval = self.get_global(node.var)
 
-                kval.set_value(value[0], force=True)
-                vval.set_value(value[1], force=True)
+                kval.value = value[0]
+                vval.value = value[1]
 
                 self.execute(node.body)
 
