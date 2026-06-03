@@ -138,6 +138,20 @@ if (x > 10) {
 }
 ```
 
+### Lambda Functions
+
+```koskript
+local x = () {
+    print("Hello world")
+}
+
+x()
+
+print(() {
+    print("Hello world function")
+})
+```
+
 ### Loops
 
 ```koskript
