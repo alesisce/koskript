@@ -1,5 +1,5 @@
 from lark import Lark
-from .lang.emtypes import KoskriptObject, KoskriptValue, ObjectType, ValueType
+from .lang.emtypes import KoskriptObject
 from .lang.interpreter import KoskripInterpreter
 from .lang.astgen import KoskriptTransformer
 import pathlib, os
@@ -10,7 +10,7 @@ grammar = Lark(
 )
 
 class KoskriptRuntime(object):
-    def __init__(self, _globals_: dict[str, KoskriptObject | KoskriptValue ] = {}):
+    def __init__(self, _globals_: dict[str, KoskriptObject] = {}):
         self.globals = _globals_
 
         self.__interpreter__ = KoskripInterpreter()
@@ -21,6 +21,10 @@ class KoskriptRuntime(object):
     def execute(self, code):
         tree = grammar.parse(code)
         ast = self.__ast__.transform(tree)
+
+        if type(ast) != list:
+            ast = [ast]
+
         self.__interpreter__.execute(ast)
 
-__ALL__ = ["KoskriptRuntime", "KoskriptObject", "KoskriptValue"]
+__ALL__ = ["KoskriptRuntime", "KoskriptObject"]
