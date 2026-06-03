@@ -10,7 +10,7 @@ Koskript is a simple, embeddable, and lightweight scripting language designed to
 
 ## Features
 
-- Static typing — `int`, `string`, `bool`, `array`, `map`
+- Dynamic typing.
 - Lexical scoping with `local` declarations
 - Native Python interop via `PYFN`
 - `if`, `elseif`, `else`
@@ -36,16 +36,17 @@ git clone https://github.com/alesisce/koskript.git
 ## Quick Start
 
 ```python
-from koskript import KoskriptRuntime, KoskriptObject, ObjectType, ValueType, KoskriptValue
+from koskript import KoskriptObject, KoskriptRuntime
 
-runtime = KoskriptRuntime(_globals_={
-    "stdlib": KoskriptValue(ValueType.MAP, {
-        "println": KoskriptObject(type=ObjectType.PYFN, value=print),
-        "inputln": KoskriptObject(type=ObjectType.PYFN, value=input),
-    })
+runtime = KoskriptRuntime({
+    "print": KoskriptObject(value=print)
 })
+runtime.execute("""
+local x = 10
+local y = 26
 
-runtime.execute(open("myscript.kos", "r").read())
+print(x+y)
+""")
 ```
 
 ---
@@ -54,7 +55,7 @@ runtime.execute(open("myscript.kos", "r").read())
 
 ```koskript
 // Student grade checker
-local map students = {
+local students = {
     "Aleix": {
         "age": 17,
         "grade": 95
@@ -69,17 +70,17 @@ local map students = {
     }
 }
 
-local int passing_grade = 75
-
-foreach (string name, map data in students) {
-    local int grade = data.grade
+local passing_grade = 75
+                   
+foreach (name, data in students) {
+    local grade = data.grade
 
     if (grade >= passing_grade) {
-        stdlib.println("PASS:", name, "->", grade)
+        print("PASS:", name, "->", grade) // Depends on how you implement it.
     } elseif (grade >= 60) {
-        stdlib.println("NEAR PASS:", name, "->", grade)
+        print("NEAR PASS:", name, "->", grade)
     } else {
-        stdlib.println("FAIL:", name, "->", grade)
+        print("FAIL:", name, "->", grade)
     }
 }
 ```
@@ -108,32 +109,32 @@ PASS: Juan -> 88
 ### Variables
 
 ```koskript
-local int x = 10
-local string name = "Koskript"
-local bool active = true
-local array items = [1, 2, 3]
-local map config = { "debug": true, "version": 1 }
+local x = 10
+local name = "Koskript"
+local active = true
+local items = [1, 2, 3]
+local config = { "debug": true, "version": 1 }
 ```
 
 ### Functions
 
 ```koskript
-int fn add(int a, int b) {
+fn add(a, b) {
     return a + b
 }
 
-local int result = add(10, 20)
+local result = add(10, 20)
 ```
 
 ### Control Flow
 
 ```koskript
 if (x > 10) {
-    stdlib.println("big")
+    print("big")
 } elseif (x == 10) {
-    stdlib.println("exact")
+    print("exact")
 } else {
-    stdlib.println("small")
+    print("small")
 }
 ```
 
@@ -146,33 +147,31 @@ while (x > 0) {
 }
 
 // for — iterate array
-for (int item in items) {
-    stdlib.println(item)
+for (item in items) {
+    print(item)
 }
 
 // foreach — iterate map
-foreach (string key, int value in config) {
-    stdlib.println(key, value)
+foreach (key, value in config) {
+    print(key, value)
 }
 ```
 
 ### Member Access
 
 ```koskript
-local map user = { "name": "Aleix", "age": 17 }
-stdlib.println(user.name)
-stdlib.println(user.age)
+local user = { "name": "Aleix", "age": 17 }
+print(user.name)
+print(user.age)
 ```
 
 ### Python Interop
 
-Any Python function can be exposed to Koskript as a `PYFN`:
+Any Python function can be exposed to Koskript as a `KoskriptObject`:
 
 ```python
 runtime = KoskriptRuntime(_globals_={
-    "stdlib": KoskriptValue(ValueType.MAP, {
-        "println": KoskriptObject(type=ObjectType.PYFN, value=print),
-    })
+    "print": KoskriptObject(value=print)
 })
 ```
 
