@@ -105,6 +105,7 @@ class KoskripInterpreter(object):
         
         func_params = func.value.params
         func_body = func.value.body
+        if type(func_body) != list: func_body = [func_body]
 
         self.scopes.append(f"func_{name}")
         for index_param, param in enumerate(func_params):
