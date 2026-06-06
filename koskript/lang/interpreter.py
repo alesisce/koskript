@@ -85,7 +85,7 @@ class KoskripInterpreter(object):
                 return value
                 
             case FnCall(n, arg): return self.fn_eval(n, arg)
-            case LambdaFnDef(p, body): return Function(params=p, body=body[0])
+            case LambdaFnDef(p, body): return KoskriptObject(value=Function(params=p, body=body[0]))
             case _: raise RuntimeError(f"Unknown expr: {type(expr).__name__}")
 
     def fn_eval(self, name, args):
